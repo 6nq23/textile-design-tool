@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Textile Design Tool — Pixel Editor</title>
-    <meta name="description" content="Segment, colorize, and pixel-edit clothing sketches">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Textile Design Tool — Advanced CV Studio</title>
+    <meta name="description" content="Professional textile design tool: segment, colorize, texture-map, and export clothing sketches using advanced Computer Vision">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,7 +16,7 @@
     </div>
 
     <header>
-        <h1>✂️ Textile Design Tool</h1>
+        <h1>✂️ Textile Design Tool <span class="badge">Advanced</span></h1>
         <div class="step-indicator">
             <span class="active" id="step1">1. Input</span>
             <span id="step2">2. Process</span>
@@ -38,12 +38,15 @@
                 <span>Tools &amp; Parameters</span>
                 <div class="tool-tabs">
                     <button class="tool-tab active" id="tabCV" onclick="switchTab('cv')">CV</button>
+                    <button class="tool-tab" id="tabGrabCut" onclick="switchTab('grabcut')">GrabCut</button>
+                    <button class="tool-tab" id="tabReduce" onclick="switchTab('reduce')">Reduce</button>
                     <button class="tool-tab" id="tabPixel" onclick="switchTab('pixel')">Pixel</button>
                 </div>
             </div>
 
             <!-- CV Controls -->
             <div class="panel-content" id="cvControls">
+                <div class="section-label">Pre-processing</div>
                 <div class="control-group">
                     <label>Max Image Size <span class="value" id="valMaxDim">1000px</span></label>
                     <input type="range" id="paramMaxDim" min="400" max="2000" step="100" value="1000">
@@ -59,6 +62,8 @@
                     <label><input type="checkbox" id="paramSharpen"> Sharpening</label>
                 </div>
                 <hr class="divider">
+
+                <div class="section-label">Edge Detection</div>
                 <div class="control-group">
                     <label>Edge Algorithm</label>
                     <select id="paramEdgeAlgo">
@@ -96,17 +101,153 @@
                     <input type="range" id="paramClose" min="1" max="9" step="1" value="3">
                 </div>
                 <div class="control-group">
+                    <label>Remove Small Details <span class="value" id="valDespeckle">0</span></label>
+                    <input type="range" id="paramDespeckle" min="0" max="500" step="10" value="0">
+                </div>
+
+                <div class="section-label" style="margin-top:1rem;color:var(--accent-primary);">Geometric Structure</div>
+                <div class="control-group">
+                    <label><input type="checkbox" id="paramHough"> Force Geometric Lines (Hough)</label>
+                </div>
+                <div id="houghControls" style="display:none;">
+                    <div class="control-group">
+                        <label>Line Threshold <span class="value" id="valHoughThresh">50</span></label>
+                        <input type="range" id="paramHoughThresh" min="10" max="200" step="10" value="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Min Line Length <span class="value" id="valHoughMinLen">30</span></label>
+                        <input type="range" id="paramHoughMinLen" min="5" max="200" step="5" value="30">
+                    </div>
+                    <div class="control-group">
+                        <label>Max Line Gap <span class="value" id="valHoughMaxGap">10</span></label>
+                        <input type="range" id="paramHoughMaxGap" min="1" max="100" step="1" value="10">
+                    </div>
+                </div>
+                <hr class="divider">
+
+                <div class="section-label">Segmentation</div>
+                <div class="control-group">
+                    <label>Segmentation Method</label>
+                    <select id="paramSegMethod">
+                        <option value="connectedComponents">Connected Components</option>
+                        <option value="watershed">Watershed (Advanced)</option>
+                    </select>
+                </div>
+                <div id="watershedControls" style="display:none;">
+                    <div class="control-group">
+                        <label>Distance Threshold <span class="value" id="valWatershedThresh">0.4</span></label>
+                        <input type="range" id="paramWatershedThresh" min="0.1" max="0.9" step="0.05" value="0.4">
+                    </div>
+                </div>
+                <div class="control-group">
                     <label>Min Region Size <span class="value" id="valMinRegion">500</span></label>
                     <input type="range" id="paramMinRegion" min="50" max="5000" step="50" value="500">
                 </div>
+                <hr class="divider">
+
+                <div class="section-label">Contour Smoothing</div>
+                <div class="control-group">
+                    <label>Smoothing Epsilon <span class="value" id="valContourSmooth">2.0</span></label>
+                    <input type="range" id="paramContourSmooth" min="0.5" max="10" step="0.5" value="2.0">
+                </div>
+
                 <button id="btnProcess" class="btn btn-primary">⚙ Run CV Pipeline</button>
+            </div>
+
+            <!-- GrabCut Controls -->
+            <div class="panel-content" id="grabcutControls" style="display:none;">
+                <div class="section-label">GrabCut — Foreground Extraction</div>
+                <p class="help-text">Extract the garment from its background. Draw a rectangle around the garment, then refine with foreground/background brushes.</p>
+
+                <div class="grabcut-tools">
+                    <button class="grabcut-tool active" id="gcToolRect" title="Draw Selection Rectangle">
+                        <span>▭</span>
+                        <small>Rectangle</small>
+                    </button>
+                    <button class="grabcut-tool" id="gcToolFG" title="Mark as Foreground">
+                        <span style="color:#10b981;">●</span>
+                        <small>Foreground</small>
+                    </button>
+                    <button class="grabcut-tool" id="gcToolBG" title="Mark as Background">
+                        <span style="color:#ef4444;">●</span>
+                        <small>Background</small>
+                    </button>
+                </div>
+
+                <div class="control-group" style="margin-top:1rem;">
+                    <label>Brush Size <span class="value" id="valGCBrush">8</span>px</label>
+                    <input type="range" id="paramGCBrush" min="2" max="40" step="1" value="8">
+                </div>
+
+                <button id="btnRunGrabCut" class="btn btn-primary" style="margin-top:1rem;">🎯 Run GrabCut</button>
+                <button id="btnApplyGrabCut" class="btn" style="margin-top:0.5rem;">✓ Apply & Continue to Pipeline</button>
+                <button id="btnClearGrabCut" class="btn" style="margin-top:0.5rem;">✕ Clear GrabCut</button>
+            </div>
+
+            <!-- Color Reduction Controls -->
+            <div class="panel-content" id="reduceControls" style="display:none;">
+                <div class="section-label">Photo Clean-up</div>
+                <p class="help-text">For real photos of fabric/embroidery. Remove shadows, fabric texture, and reduce to exact flat colors for textile CAD.</p>
+
+                <div class="section-label" style="margin-top:0.5rem;">1. Fix Lighting / Shadows</div>
+                <div class="control-group">
+                    <label><input type="checkbox" id="paramFixLighting"> Enable Illumination Correction</label>
+                </div>
+                <div class="control-group">
+                    <label>BG Estimation Kernel <span class="value" id="valLightKernel">51</span></label>
+                    <input type="range" id="paramLightKernel" min="11" max="151" step="10" value="51">
+                </div>
+
+                <hr class="divider">
+                <div class="section-label">2. Remove Fabric Texture</div>
+                <div class="control-group">
+                    <label><input type="checkbox" id="paramBilateral" checked> Enable Bilateral Filter</label>
+                </div>
+                <div class="control-group">
+                    <label>Filter Diameter <span class="value" id="valBilateralD">9</span></label>
+                    <input type="range" id="paramBilateralD" min="3" max="25" step="2" value="9">
+                </div>
+                <div class="control-group">
+                    <label>Sigma Color <span class="value" id="valSigmaColor">75</span></label>
+                    <input type="range" id="paramSigmaColor" min="10" max="200" step="5" value="75">
+                </div>
+                <div class="control-group">
+                    <label>Sigma Space <span class="value" id="valSigmaSpace">75</span></label>
+                    <input type="range" id="paramSigmaSpace" min="10" max="200" step="5" value="75">
+                </div>
+
+                <hr class="divider">
+                <div class="section-label">3. Color Reduction (K-Means)</div>
+                <div class="control-group">
+                    <label>Number of Colors <span class="value" id="valNumColors">3</span></label>
+                    <input type="range" id="paramNumColors" min="2" max="16" step="1" value="3">
+                </div>
+                <div class="control-group">
+                    <label>Iterations <span class="value" id="valKmeansIter">10</span></label>
+                    <input type="range" id="paramKmeansIter" min="3" max="30" step="1" value="10">
+                </div>
+
+                <hr class="divider">
+                <div class="section-label">4. Pixelation (Grid Snap)</div>
+                <div class="control-group">
+                    <label><input type="checkbox" id="paramPixelate"> Enable Pixelation</label>
+                </div>
+                <div class="control-group">
+                    <label>Pixel Block Size <span class="value" id="valPixelSize">4</span>px</label>
+                    <input type="range" id="paramPixelSize" min="2" max="20" step="1" value="4">
+                </div>
+
+                <hr class="divider">
+                <button id="btnRunReduce" class="btn btn-primary">🎨 Run Color Reduction</button>
+                <div id="reducedPalette" style="margin-top:0.75rem;"></div>
             </div>
 
             <!-- Pixel Editor Controls -->
             <div class="panel-content" id="pixelControls" style="display:none;">
                 <div class="pixel-tools">
                     <button class="pixel-tool active" id="toolPencil" title="Pencil">✏️</button>
-                    <button class="pixel-tool" id="toolFill" title="Flood Fill">🪣</button>
+                    <button class="pixel-tool" id="toolRegion" title="Paint Region (Click a segment to color it)">🎯</button>
+                    <button class="pixel-tool" id="toolFill" title="Flood Fill (OpenCV Pixel Fill)">🪣</button>
                     <button class="pixel-tool" id="toolEraser" title="Eraser">◻</button>
                     <button class="pixel-tool" id="toolPicker" title="Color Picker (Eyedropper)">💉</button>
                     <button class="pixel-tool" id="toolPan" title="Pan">✋</button>
@@ -156,14 +297,19 @@
                 </div>
             </div>
 
+            <!-- GrabCut overlay canvas -->
+            <canvas id="grabcutCanvas" class="hidden" style="position:absolute;top:0;left:0;z-index:15;cursor:crosshair;"></canvas>
+
             <!-- Pixel editor viewport -->
             <div class="canvas-container" id="canvasContainer">
-                <div id="canvasWrapper" style="position:relative;transform-origin:0 0;">
+                <div id="canvasWrapper" style="display:inline-block;position:relative;transform-origin:0 0;image-rendering:pixelated;margin:auto;">
                     <canvas id="mainCanvas" class="hidden"></canvas>
                     <canvas id="edgeCanvas" class="hidden"></canvas>
                     <canvas id="segmentCanvas" class="hidden"></canvas>
                     <!-- previewCanvas is the editable pixel canvas -->
                     <canvas id="previewCanvas" class="hidden" style="cursor:crosshair;"></canvas>
+                    <!-- Reduced color output canvas -->
+                    <canvas id="reducedCanvas" class="hidden"></canvas>
                     <!-- Overlay for pixel grid at high zoom -->
                     <canvas id="gridCanvas" class="hidden" style="position:absolute;top:0;left:0;pointer-events:none;opacity:0.3;"></canvas>
                 </div>
@@ -174,18 +320,39 @@
                 <button id="viewEdges">Edges</button>
                 <button id="viewRegions">Segments</button>
                 <button id="viewColored" class="active">Colorized</button>
+                <button id="viewReduced">Reduced</button>
             </div>
         </main>
 
         <!-- RIGHT PANEL -->
-        <aside class="panel right">
+        <aside class="panel right" id="rightPanel">
             <div class="panel-header">Colors &amp; Regions</div>
             <div class="panel-content">
                 <div class="control-group">
                     <label>Active Color</label>
                     <input type="color" id="activeColorPicker" value="#ef4444" style="width:100%;height:40px;cursor:pointer;background:none;border:none;padding:0;">
                     <div class="color-swatches" id="colorSwatches"></div>
+                    <button id="btnFillAll" class="btn" style="margin-top:0.5rem;font-size:0.75rem;border-color:var(--accent-secondary);">🌈 Fill All Regions with Active Color</button>
                 </div>
+                <hr class="divider">
+                <div class="section-label">Global Colors (Fast Fill)</div>
+                <div class="control-group" style="display:flex;gap:0.5rem;margin-top:0.4rem;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.7rem;">Edges</label>
+                        <input type="color" id="globalEdgeColor" value="#000000" style="width:100%;height:30px;cursor:pointer;background:none;border:none;padding:0;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:0.7rem;">Background</label>
+                        <input type="color" id="globalBgColor" value="#ffffff" style="width:100%;height:30px;cursor:pointer;background:none;border:none;padding:0;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:0.7rem;">Fill</label>
+                        <input type="color" id="globalFillColor" value="#f43f5e" style="width:100%;height:30px;cursor:pointer;background:none;border:none;padding:0;">
+                    </div>
+                </div>
+                <button id="btnApplyGlobalColors" class="btn btn-primary" style="margin-top:0.5rem;font-size:0.75rem;">🎨 Apply Global Colors</button>
+
+                <hr class="divider">
                 <div class="control-group">
                     <label>Blend Mode</label>
                     <select id="paramBlendMode">
@@ -193,6 +360,29 @@
                         <option value="multiply">Multiply (Keep texture)</option>
                     </select>
                 </div>
+                <hr class="divider">
+
+                <!-- Texture/Pattern Overlay -->
+                <div class="section-label">Texture / Pattern</div>
+                <div class="control-group">
+                    <label>Pattern Image</label>
+                    <div class="pattern-upload-area">
+                        <input type="file" id="patternFileInput" accept="image/*" style="display:none;">
+                        <button id="btnUploadPattern" class="btn" style="font-size:0.78rem;">📂 Upload Pattern</button>
+                        <canvas id="patternPreview" width="60" height="60" style="border-radius:6px;border:1px solid var(--panel-border);display:none;margin-top:0.5rem;"></canvas>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Pattern Scale <span class="value" id="valPatternScale">1.0</span>x</label>
+                    <input type="range" id="paramPatternScale" min="0.25" max="4" step="0.25" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label>Pattern Opacity <span class="value" id="valPatternOpacity">80</span>%</label>
+                    <input type="range" id="paramPatternOpacity" min="10" max="100" step="5" value="80">
+                </div>
+                <button id="btnApplyPattern" class="btn" style="font-size:0.78rem;">🎨 Apply Pattern to Selected Region</button>
+                <button id="btnClearPattern" class="btn" style="margin-top:0.3rem;font-size:0.78rem;">✕ Clear Pattern</button>
+
                 <hr class="divider">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <label style="font-size:0.85rem;color:var(--text-muted);font-weight:600;">Regions</label>
@@ -202,6 +392,7 @@
                     <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:0.9rem;">Upload and process an image to see regions.</div>
                 </div>
                 <hr class="divider">
+                <div class="section-label">Export</div>
                 <div class="control-group">
                     <label>BMP Color Depth</label>
                     <select id="exportBpp">
@@ -211,6 +402,7 @@
                 </div>
                 <button id="btnExportBMP" class="btn btn-primary">⬇ Export .BMP</button>
                 <button id="btnExportPNG" class="btn" style="margin-top:0.5rem;">⬇ Export .PNG</button>
+                <button id="btnExportSVG" class="btn btn-accent" style="margin-top:0.5rem;">⬇ Export .SVG (Vector)</button>
             </div>
         </aside>
     </div>
@@ -219,6 +411,7 @@
 
     <script async src="opencv.js" type="text/javascript"></script>
     <script src="bmp-encoder.js"></script>
+    <script src="svg-exporter.js"></script>
     <script src="cv-pipeline.js"></script>
     <script src="app.js"></script>
 </body>

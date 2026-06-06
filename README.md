@@ -1,30 +1,74 @@
 # Textile Design Tool
 
-A browser-based application for automatically segmenting and colorizing clothing sketches using classical Computer Vision techniques. No AI/ML is used, and everything runs entirely locally in your browser.
+# Advanced Textile Design Tool
 
-## Features
+A professional-grade, browser-based CAD (Computer-Aided Design) application built specifically for the textile, fashion, and weaving industry. 
 
-- **No Server/Backend:** Runs 100% in the browser.
-- **Classical Computer Vision:** Powered by OpenCV.js (WebAssembly) for fast edge detection and connected component analysis.
-- **Adjustable Parameters:** Every part of the processing pipeline can be customized via UI sliders.
-- **Edge Algorithms:** Supports Canny, Sobel, and Adaptive Thresholding.
-- **Custom BMP Encoder:** Implements a pure-JavaScript `.bmp` exporter from scratch (supports 24-bit RGB and 32-bit RGBA).
-- **Responsive UI:** Dark theme, drag-and-drop support, camera capture, and quick view toggles.
+This tool bridges the gap between messy, real-world inputs (hand-drawn sketches or smartphone photos of physical fabric) and the mathematically perfect, flat-color bitmaps required by industrial looms and software like NedGraphics.
 
-## How to Run
+![Textile Tool UI](ui-preview.jpg) *(Placeholder for UI screenshot)*
 
-1. Simply open `index.html` in any modern web browser.
-   - *Note:* Because it fetches OpenCV.js from a CDN via WebAssembly, you need an active internet connection on the first load. 
-   - No build step or local server is strictly required, although opening via a local server (e.g. `npx serve .` or Live Server) is recommended for best performance and avoiding CORS issues with local file loading in some strict browsers.
+## 🚀 Features
 
-## Workflow
+### 1. Zero-Backend Architecture
+Everything runs 100% locally on your machine. No data is sent to the cloud, ensuring absolute privacy for your designs. It utilizes **OpenCV.js** (WebAssembly compiled C++) to run heavy matrix math algorithms directly in the browser at near-native speeds.
 
-1. **Upload / Capture:** Drop an image of a clothing sketch, click to browse, or use the Camera button to take a picture.
-2. **Pre-processing:** The app scales the image down and converts it to grayscale. Adjust the blur and contrast settings on the left panel to reduce noise.
-3. **Edge Detection:** Choose an algorithm (Canny is default). Tweak the thresholds until you get clean, closed boundaries (view the "Edges" tab to see). Use the Dilation and Morphological Close sliders to close small gaps.
-4. **Segmentation:** The system identifies distinct regions (connected components). Check the "Segments" tab. If there are too many small noise regions, increase the "Min Region Size".
-5. **Colorization:** Pick a color from the palette on the right, and click on any region on the canvas (in the "Colorized" tab) to fill it. Change the blend mode to "Multiply" if you want to retain shading/texture from the original sketch.
-6. **Export:** Choose your color depth and click "Export BMP" to save the raw Bitmap file, or "Export PNG" for a smaller web-friendly format.
+### 2. Sketch Pre-processing & Segmentation (CV Tab)
+Designed to convert hand-drawn pencil/ink sketches into closed vector-like regions.
+* **Edge Detection:** Canny, Sobel, and Adaptive Threshold algorithms to find ink lines.
+* **Morphological Closing:** Mathematically detects tiny breaks in hand-drawn lines and "bridges" them so color doesn't leak out during filling.
+* **Watershed / Connected Components:** Calculates the topography of the sketch to identify distinct enclosed regions (e.g., separating a collar from a sleeve).
+
+### 3. Fabric Photo Processing (Reduce Tab)
+Designed to convert smartphone photos of physical fabric/embroidery into flat CAD files.
+* **Illumination Correction:** Estimates shadows and folds, mathematically dividing them out for flat lighting.
+* **Bilateral Filtering:** An edge-preserving blur. Smooths away the noisy weave/texture of the fabric while keeping the sharp edges of the embroidery threads intact.
+* **K-Means Clustering:** Analyzes millions of pixel colors and forces every pixel into exactly *N* solid, flat colors.
+* **Pixelation (Grid Snap):** Snaps fluid shapes into a strict block grid, simulating the warp and weft of woven threads.
+
+### 4. GrabCut Extraction
+Interactive foreground extraction using Gaussian Mixture Models. Draw a box around a garment and paint hints (foreground/background) to instantly cut clothing out of complex backgrounds (like mannequins or rooms).
+
+### 5. Pixel & Region Editor
+* **Live Updates:** Moving any slider waits 300ms and instantly recalculates the math pipeline.
+* **Global Fast Fill:** Instantly maps the detected edges, background, and garment parts to exactly 3 distinct flat colors.
+* **Region Paint:** Click any detected segment to instantly fill it with the active color.
+* **OpenCV Flood Fill:** A lightning-fast, C++ backed bucket-fill tool for manual touch-ups.
+* **Texture Mapping:** Upload a seamless pattern (like plaid) and mathematically mask it inside a specific garment segment, respecting scale and opacity.
+
+### 6. Professional Export
+* **.BMP (24-bit/32-bit):** Uncompressed, mathematically pure bitmaps. Required by industrial looms and CAD software.
+* **.PNG:** For sharing on the web or with clients.
+* **.SVG:** Converts mathematical contours into scalable Bezier curves for editing in Adobe Illustrator.
+
+---
+
+## 🛠️ Installation & Usage
+
+Because WebAssembly requires strict security headers (`Cross-Origin-Opener-Policy`) to unlock multi-threading speeds, the tool must be served via a local web server.
+
+1. **Install Dependencies:**
+   Make sure you have [Node.js](https://nodejs.org/) installed, then run:
+   ```bash
+   npm install
+   ```
+
+2. **Start the Local Server:**
+   ```bash
+   npm start
+   ```
+
+3. **Open the Tool:**
+   Open your browser and navigate to:
+   `http://localhost:3000`
+
+## ⌨️ Keyboard Shortcuts
+* `Ctrl + Z`: Undo
+* `Ctrl + Y`: Redo
+* `Ctrl + B`: Toggle Sidebars (Full-screen canvas mode)
+* `1, 2, 3, 4`: Switch Canvas Views (Original, Edges, Segments, Colorized)
+* `Middle-Click / Space + Drag`: Pan Canvas
+* `Mouse Wheel`: Zoom to Cursor
 
 ## File Structure
 
