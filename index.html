@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Textile Design Tool — Pixel Editor</title>
+    <meta name="description" content="Segment, colorize, and pixel-edit clothing sketches">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <h2>Loading CV Engine...</h2>
+        <p style="margin-top:0.5rem;color:var(--text-muted);">Loading local OpenCV.js…</p>
+    </div>
+
+    <header>
+        <h1>✂️ Textile Design Tool</h1>
+        <div class="step-indicator">
+            <span class="active" id="step1">1. Input</span>
+            <span id="step2">2. Process</span>
+            <span id="step3">3. Colorize</span>
+            <span id="step4">4. Pixel Edit</span>
+            <span id="step5">5. Export</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button id="btnUndo" class="btn-icon" title="Undo (Ctrl+Z)">↩</button>
+            <button id="btnRedo" class="btn-icon" title="Redo (Ctrl+Y)">↪</button>
+            <button id="btnReset" class="btn-icon danger" title="Reset">✕</button>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- LEFT PANEL -->
+        <aside class="panel left" id="leftPanel">
+            <div class="panel-header">
+                <span>Tools &amp; Parameters</span>
+                <div class="tool-tabs">
+                    <button class="tool-tab active" id="tabCV" onclick="switchTab('cv')">CV</button>
+                    <button class="tool-tab" id="tabPixel" onclick="switchTab('pixel')">Pixel</button>
+                </div>
+            </div>
+
+            <!-- CV Controls -->
+            <div class="panel-content" id="cvControls">
+                <div class="control-group">
+                    <label>Max Image Size <span class="value" id="valMaxDim">1000px</span></label>
+                    <input type="range" id="paramMaxDim" min="400" max="2000" step="100" value="1000">
+                </div>
+                <div class="control-group">
+                    <label>Blur Radius <span class="value" id="valBlur">2</span></label>
+                    <input type="range" id="paramBlur" min="0" max="10" step="1" value="2">
+                </div>
+                <div class="control-group">
+                    <label><input type="checkbox" id="paramContrast" checked> Contrast Enhancement</label>
+                </div>
+                <div class="control-group">
+                    <label><input type="checkbox" id="paramSharpen"> Sharpening</label>
+                </div>
+                <hr class="divider">
+                <div class="control-group">
+                    <label>Edge Algorithm</label>
+                    <select id="paramEdgeAlgo">
+                        <option value="canny">Canny (Default)</option>
+                        <option value="sobel">Sobel</option>
+                        <option value="adaptive">Adaptive Threshold</option>
+                    </select>
+                </div>
+                <div id="cannyControls">
+                    <div class="control-group">
+                        <label>Canny Low <span class="value" id="valCannyLow">50</span></label>
+                        <input type="range" id="paramCannyLow" min="0" max="100" step="5" value="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Canny High <span class="value" id="valCannyHigh">150</span></label>
+                        <input type="range" id="paramCannyHigh" min="100" max="300" step="10" value="150">
+                    </div>
+                </div>
+                <div id="adaptiveControls" style="display:none;">
+                    <div class="control-group">
+                        <label>Block Size <span class="value" id="valAdaptiveBlock">11</span></label>
+                        <input type="range" id="paramAdaptiveBlock" min="3" max="51" step="2" value="11">
+                    </div>
+                    <div class="control-group">
+                        <label>Constant C <span class="value" id="valAdaptiveC">2</span></label>
+                        <input type="range" id="paramAdaptiveC" min="-10" max="10" step="1" value="2">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Dilation <span class="value" id="valDilate">1</span></label>
+                    <input type="range" id="paramDilate" min="0" max="5" step="1" value="1">
+                </div>
+                <div class="control-group">
+                    <label>Morph Close <span class="value" id="valClose">3</span></label>
+                    <input type="range" id="paramClose" min="1" max="9" step="1" value="3">
+                </div>
+                <div class="control-group">
+                    <label>Min Region Size <span class="value" id="valMinRegion">500</span></label>
+                    <input type="range" id="paramMinRegion" min="50" max="5000" step="50" value="500">
+                </div>
+                <button id="btnProcess" class="btn btn-primary">⚙ Run CV Pipeline</button>
+            </div>
+
+            <!-- Pixel Editor Controls -->
+            <div class="panel-content" id="pixelControls" style="display:none;">
+                <div class="pixel-tools">
+                    <button class="pixel-tool active" id="toolPencil" title="Pencil">✏️</button>
+                    <button class="pixel-tool" id="toolFill" title="Flood Fill">🪣</button>
+                    <button class="pixel-tool" id="toolEraser" title="Eraser">◻</button>
+                    <button class="pixel-tool" id="toolPicker" title="Color Picker (Eyedropper)">💉</button>
+                    <button class="pixel-tool" id="toolPan" title="Pan">✋</button>
+                </div>
+                <div class="control-group" style="margin-top:1rem;">
+                    <label>Brush Size <span class="value" id="valBrushSize">1</span>px</label>
+                    <input type="range" id="paramBrushSize" min="1" max="20" step="1" value="1">
+                </div>
+                <div class="control-group">
+                    <label>Fill Tolerance <span class="value" id="valFillTolerance">15</span></label>
+                    <input type="range" id="paramFillTolerance" min="0" max="100" step="1" value="15">
+                </div>
+                <div class="control-group">
+                    <label>Zoom <span class="value" id="valZoom">100</span>%</label>
+                    <input type="range" id="paramZoom" min="50" max="3200" step="25" value="100">
+                </div>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button id="btnZoomIn" class="btn" style="flex:1;">+ Zoom In</button>
+                    <button id="btnZoomOut" class="btn" style="flex:1;">- Zoom Out</button>
+                </div>
+                <button id="btnZoomFit" class="btn" style="margin-top:0.5rem;">Fit to Screen</button>
+                <hr class="divider">
+                <div id="pixelCoords" style="font-size:0.8rem;color:var(--text-muted);padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;font-family:monospace;">
+                    x: — , y: —<br>Color: —
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER Workspace -->
+        <main class="workspace">
+            <!-- Upload Overlay -->
+            <div class="upload-overlay" id="uploadOverlay">
+                <div class="upload-box" id="dropZone">
+                    <div class="upload-icon">📁</div>
+                    <h3 style="margin-bottom:1rem;">Drop Image or Paste (Ctrl+V)</h3>
+                    <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">JPG, PNG, WEBP, BMP supported</p>
+                    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+                    <div style="display:flex;gap:1rem;justify-content:center;">
+                        <button id="btnBrowse" class="btn btn-primary">Browse Files</button>
+                        <button id="btnCamera" class="btn">Camera</button>
+                    </div>
+                </div>
+                <video id="cameraVideo" style="display:none;max-width:100%;max-height:100%;"></video>
+                <div id="cameraControls" style="display:none;position:absolute;bottom:2rem;gap:1rem;display:none;">
+                    <button id="btnCapture" class="btn btn-primary" style="border-radius:30px;padding:1rem 2rem;">Capture</button>
+                    <button id="btnCancelCamera" class="btn" style="border-radius:30px;">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Pixel editor viewport -->
+            <div class="canvas-container" id="canvasContainer">
+                <div id="canvasWrapper" style="position:relative;transform-origin:0 0;">
+                    <canvas id="mainCanvas" class="hidden"></canvas>
+                    <canvas id="edgeCanvas" class="hidden"></canvas>
+                    <canvas id="segmentCanvas" class="hidden"></canvas>
+                    <!-- previewCanvas is the editable pixel canvas -->
+                    <canvas id="previewCanvas" class="hidden" style="cursor:crosshair;"></canvas>
+                    <!-- Overlay for pixel grid at high zoom -->
+                    <canvas id="gridCanvas" class="hidden" style="position:absolute;top:0;left:0;pointer-events:none;opacity:0.3;"></canvas>
+                </div>
+            </div>
+
+            <div class="view-toggles" id="viewToggles" style="display:none;">
+                <button id="viewOriginal">Original</button>
+                <button id="viewEdges">Edges</button>
+                <button id="viewRegions">Segments</button>
+                <button id="viewColored" class="active">Colorized</button>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL -->
+        <aside class="panel right">
+            <div class="panel-header">Colors &amp; Regions</div>
+            <div class="panel-content">
+                <div class="control-group">
+                    <label>Active Color</label>
+                    <input type="color" id="activeColorPicker" value="#ef4444" style="width:100%;height:40px;cursor:pointer;background:none;border:none;padding:0;">
+                    <div class="color-swatches" id="colorSwatches"></div>
+                </div>
+                <div class="control-group">
+                    <label>Blend Mode</label>
+                    <select id="paramBlendMode">
+                        <option value="flat">Flat Fill</option>
+                        <option value="multiply">Multiply (Keep texture)</option>
+                    </select>
+                </div>
+                <hr class="divider">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <label style="font-size:0.85rem;color:var(--text-muted);font-weight:600;">Regions</label>
+                    <span id="regionCount" style="font-size:0.8rem;background:rgba(255,255,255,0.1);padding:0.1rem 0.5rem;border-radius:10px;">0</span>
+                </div>
+                <div class="region-list" id="regionList">
+                    <div style="text-align:center;padding:2rem 0;color:var(--text-muted);font-size:0.9rem;">Upload and process an image to see regions.</div>
+                </div>
+                <hr class="divider">
+                <div class="control-group">
+                    <label>BMP Color Depth</label>
+                    <select id="exportBpp">
+                        <option value="24">24-bit RGB (compatible with all software)</option>
+                        <option value="32">32-bit RGBA (transparency)</option>
+                    </select>
+                </div>
+                <button id="btnExportBMP" class="btn btn-primary">⬇ Export .BMP</button>
+                <button id="btnExportPNG" class="btn" style="margin-top:0.5rem;">⬇ Export .PNG</button>
+            </div>
+        </aside>
+    </div>
+
+    <div id="toast" class="toast">Message</div>
+
+    <script async src="opencv.js" type="text/javascript"></script>
+    <script src="bmp-encoder.js"></script>
+    <script src="cv-pipeline.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

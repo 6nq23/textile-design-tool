@@ -1,0 +1,12 @@
+{
+  "name": "textile-design-tool",
+  "version": "1.0.0",
+  "description": "Textile Design Tool with local backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
